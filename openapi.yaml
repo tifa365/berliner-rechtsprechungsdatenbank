@@ -1,0 +1,547 @@
+openapi: 3.1.0
+info:
+  title: Gesetze Berlin API
+  description: API for searching Berlin legal documents (laws and court decisions)
+  version: V08_26_01
+  contact:
+    name: Gesetze Berlin
+    url: https://gesetze.berlin.de
+
+servers:
+  - url: https://gesetze.berlin.de/jportal/wsrest/recherche3
+    description: Production server
+
+paths:
+  /search:
+    post:
+      operationId: searchDocuments
+      summary: Search legal documents
+      description: Search for laws and court decisions in the Berlin legal database
+      tags:
+        - Search
+      parameters:
+        - name: juris-portalid
+          in: header
+          required: true
+          schema:
+            type: string
+            default: bsbe
+          description: Portal identifier
+        - name: x-csrf-token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: CSRF token for request validation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Successful search response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - cookieAuth: []
+
+  /suggest:
+    post:
+      operationId: getSuggestions
+      summary: Get autocomplete suggestions
+      description: Get autocomplete suggestions for search fields (Titel, Norm, Fundstelle)
+      tags:
+        - Search
+      parameters:
+        - name: juris-portalid
+          in: header
+          required: true
+          schema:
+            type: string
+            default: bsbe
+          description: Portal identifier
+        - name: x-csrf-token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: CSRF token for request validation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuggestRequest'
+      responses:
+        '200':
+          description: Successful suggest response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuggestResponse'
+      security:
+        - cookieAuth: []
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+
+  schemas:
+    SearchRequest:
+      type: object
+      required:
+        - searchTasks
+        - filters
+        - searches
+        - clientID
+        - clientVersion
+        - r3ID
+      properties:
+        searchTasks:
+          $ref: '#/components/schemas/SearchTasks'
+        filters:
+          $ref: '#/components/schemas/Filters'
+        searches:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchField'
+          description: Search queries (empty array for browsing all)
+        clientID:
+          type: string
+          example: bsbe
+          description: Client/portal identifier
+        clientVersion:
+          type: string
+          example: "bsbe - V08_26_01 - 17.12.2025 16:06"
+          description: Client version string
+        r3ID:
+          type: string
+          format: date-time
+          example: "2025-12-28T10:44:51.022Z"
+          description: Request identifier timestamp
+
+    SearchField:
+      type: object
+      required:
+        - id
+        - value
+      properties:
+        id:
+          type: string
+          enum:
+            - Text
+            - Titel
+            - Norm
+            - Fundstelle
+            - AutorGericht
+            - AZ
+            - Datum
+            - FastSearch
+          description: |
+            Search field identifier:
+            - Text: Full-text search
+            - Titel: Title/name of law or decision
+            - Norm: Legal norm reference (e.g., "BImSchV 16")
+            - Fundstelle: Citation/source reference
+            - AutorGericht: Author/Court name (Autor/Gericht in UI)
+            - AZ: Case number/ECLI (AZ/ECLI in UI)
+            - Datum: Date
+            - FastSearch: Combined search terms (auto-generated)
+        value:
+          type: string
+          description: Search term (use quotes for exact match)
+          example: "SchulG BE"
+      example:
+        id: Titel
+        value: "\"SchulG BE\""
+
+    SearchTasks:
+      type: object
+      properties:
+        CATEGORY_HITS:
+          type: object
+          additionalProperties: true
+          description: Configuration for category hit counting
+        RESULT_LIST:
+          $ref: '#/components/schemas/ResultListConfig'
+        RESULT_LIST_CACHE:
+          $ref: '#/components/schemas/ResultListCacheConfig'
+        SEARCH_WORD_HITS:
+          type: object
+          additionalProperties: true
+          description: Configuration for search word hit highlighting
+
+    ResultListConfig:
+      type: object
+      properties:
+        start:
+          type: integer
+          minimum: 1
+          example: 1
+          description: Starting position (1-indexed)
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 26
+          description: Number of results to return
+        sort:
+          type: string
+          enum:
+            - juris
+            - date
+            - relevance
+          example: juris
+          description: Sort order for results
+        addToHistory:
+          type: boolean
+          example: true
+          description: Whether to add this search to history
+        addCategory:
+          type: boolean
+          example: true
+          description: Whether to include category information
+
+    ResultListCacheConfig:
+      type: object
+      properties:
+        start:
+          type: integer
+          minimum: 1
+          example: 25
+          description: Cache starting position
+        size:
+          type: integer
+          minimum: 1
+          example: 27
+          description: Cache size
+
+    Filters:
+      type: object
+      properties:
+        CATEGORY:
+          type: array
+          items:
+            type: string
+            enum:
+              - Alles
+              - Gesetze
+              - Rechtsprechung
+          example: ["Alles"]
+          description: Categories to filter by
+
+    SearchResponse:
+      type: object
+      properties:
+        searchWords:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchWord'
+          description: Parsed search terms with hit counts
+        resultList:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+          description: List of search results
+        highlightTerms:
+          type: array
+          items:
+            type: string
+          description: Terms to highlight in results
+        hits:
+          type: integer
+          example: 78475
+          description: Total number of matching documents
+        categoryHits:
+          $ref: '#/components/schemas/CategoryHits'
+        debugInfos:
+          $ref: '#/components/schemas/DebugInfos'
+
+    SearchWord:
+      type: object
+      properties:
+        "@type":
+          type: string
+        text:
+          type: string
+          example: "TITEL:\"SchulG BE\""
+          description: Parsed search term with field prefix
+        htmlLabel:
+          type: string
+          example: Titel
+          description: Display label for the field
+        id:
+          type: string
+          example: Titel
+          description: Field identifier
+        type:
+          type: string
+          enum:
+            - TEXT
+            - TITLE
+            - NORM
+          example: TITLE
+          description: Field type
+        hits:
+          type: integer
+          example: 1
+          description: Number of hits for this term
+        isIgnored:
+          type: boolean
+          example: false
+          description: Whether the term was ignored
+
+    SearchResult:
+      type: object
+      properties:
+        entryType:
+          type: string
+          example: juris
+          description: Type of entry source
+        inaccessible:
+          type: boolean
+          example: false
+          description: Whether the document is accessible
+        titleList:
+          type: array
+          items:
+            type: string
+          example: ["KG Berlin 5. Zivilsenat", "5 W 170/25"]
+          description: Title elements (court, case number)
+        subtitleList:
+          type: array
+          items:
+            type: string
+          example: ["Beschluss", "Summary text...", "§ 104 Abs 1 S 2 ZPO"]
+          description: Subtitle elements (document type, summary, legal references)
+        categoryId:
+          type: string
+          enum:
+            - Rechtsprechung
+            - Gesetze
+          example: Rechtsprechung
+          description: Category of the document
+        score:
+          type: number
+          format: float
+          example: 0.0
+          description: Relevance score
+        deleted:
+          type: boolean
+          example: false
+          description: Whether the document is marked as deleted
+        iconAltText:
+          type: string
+          example: "Inhaltliche Erschließung erfolgt in Kürze."
+          description: Alternative text for the icon
+        iconId:
+          type: string
+          enum:
+            - juris_rs
+            - juris_rs_schwinge
+          example: juris_rs_schwinge
+          description: Icon identifier for display
+        date:
+          type: string
+          pattern: '^\d{2}\.\d{2}\.\d{4}$'
+          example: "18.12.2025"
+          description: Document date (DD.MM.YYYY format)
+        docId:
+          type: string
+          example: NJRE001628332
+          description: Unique document identifier
+        price:
+          type: number
+          format: float
+          example: 0.0
+          description: Price for accessing the document
+        visited:
+          type: boolean
+          example: false
+          description: Whether the user has visited this document
+        docPart:
+          type: string
+          example: L
+          description: Document part identifier
+        label:
+          type: string
+          example: Langtext
+          description: Display label for the document
+        hasEmbeddings:
+          type: boolean
+          example: true
+          description: Whether the document has embeddings for semantic search
+
+    CategoryHits:
+      type: object
+      properties:
+        Gesetze:
+          type: integer
+          example: 49982
+          description: Number of hits in Laws category
+        Alles:
+          type: integer
+          example: 78475
+          description: Total hits across all categories
+        Rechtsprechung:
+          type: integer
+          example: 28493
+          description: Number of hits in Court Decisions category
+      additionalProperties:
+        type: integer
+
+    DebugInfos:
+      type: object
+      properties:
+        sort:
+          type: string
+          example: juris
+          description: Applied sort order
+        timeRESULT_LIST:
+          type: string
+          example: "14"
+          description: Time to fetch result list (ms)
+        timeCATEGORY_HITS:
+          type: string
+          example: "6"
+          description: Time to calculate category hits (ms)
+      additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        msgId:
+          type: string
+          example: internal
+        msgParams:
+          type: object
+        httpStatus:
+          type: integer
+          example: 500
+        info:
+          type: string
+          description: Error details with version and timestamp
+
+    SuggestRequest:
+      type: object
+      required:
+        - field
+        - input
+        - clientID
+        - clientVersion
+        - r3ID
+      properties:
+        field:
+          type: string
+          enum:
+            - Text
+            - Titel
+            - Norm
+            - Fundstelle
+            - AutorGericht
+            - AZ
+            - Datum
+          description: Field to get suggestions for
+        input:
+          type: string
+          example: Schul
+          description: Partial input to get suggestions for
+        withHits:
+          type: boolean
+          example: true
+          description: Whether to include hit counts
+        category:
+          type: string
+          enum:
+            - Alles
+            - Gesetze
+            - Rechtsprechung
+          example: Alles
+          description: Category to search within
+        startTime:
+          type: integer
+          format: int64
+          example: 1766919299629
+          description: Request start timestamp (epoch ms)
+        clientID:
+          type: string
+          example: bsbe
+        clientVersion:
+          type: string
+          example: "bsbe - V08_26_01 - 17.12.2025 16:06"
+        r3ID:
+          type: string
+          format: date-time
+          example: "2025-12-28T10:44:51.022Z"
+
+    SuggestResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Suggestion'
+        startTime:
+          type: integer
+          format: int64
+          example: 1766919299629
+
+    Suggestion:
+      type: object
+      properties:
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestionPart'
+          description: Text parts with optional markup
+        synonym:
+          type: string
+          example: "Schulgesetz für das Land Berlin (Schulgesetz - SchulG) vom 26. Januar 2004"
+          description: Full title/synonym
+        text:
+          type: string
+          example: "<b>Schul</b>G BE"
+          description: HTML formatted suggestion text
+        value:
+          type: string
+          example: "SchulG BE"
+          description: Value to use when selected
+        hits:
+          type: integer
+          example: -1
+          description: Number of matching documents (-1 if not calculated)
+        price:
+          type: number
+          format: float
+          example: 0.0
+
+    SuggestionPart:
+      type: object
+      properties:
+        text:
+          type: string
+          example: SchulG BE
+        markup:
+          type: array
+          items:
+            type: string
+            enum:
+              - BOLD
+          description: Markup to apply to this part
+
+tags:
+  - name: Search
+    description: Search and autocomplete operations for legal documents
