@@ -1,0 +1,4 @@
+# file: /usr/lib/python3/dist-packages/h11/_state.py
+# hypothesis_version: 6.148.8
+
+['CLIENT', 'CLOSED', 'DONE', 'ERROR', 'IDLE', 'MUST_CLOSE', 'SEND_BODY', 'SEND_RESPONSE', 'SERVER', 'SWITCHED_PROTOCOL']

@@ -10,6 +10,8 @@ Unofficial API documentation for the Berlin legal database (Berliner Vorschrifte
 |----------|--------|-------------|
 | `/search` | POST | Search for legal documents |
 | `/suggest` | POST | Get autocomplete suggestions |
+| `/document` | POST | Get full document content |
+| `/toc` | POST | Get table of contents (for laws) |
 
 ## Search Field Coverage
 
@@ -89,6 +91,45 @@ Unofficial API documentation for the Berlin legal database (Berliner Vorschrifte
 | `Alles` | All documents | 78,475 |
 | `Gesetze` | Laws | 49,982 |
 | `Rechtsprechung` | Court decisions | 28,493 |
+
+## Document Request
+
+```json
+{
+  "docId": "NJRE001628332",
+  "format": "xsl",
+  "docPart": "L",
+  "keyword": null,
+  "sourceParams": {
+    "position": 0,
+    "sort": "juris",
+    "source": "TL",
+    "category": "Alles"
+  },
+  "searches": [],
+  "clientID": "bsbe",
+  "clientVersion": "bsbe - V08_26_01 - 17.12.2025 16:06",
+  "r3ID": "2025-12-28T10:44:51.022Z"
+}
+```
+
+### Document Response
+
+| Field | Description |
+|-------|-------------|
+| `text` | Full HTML content of document |
+| `head` | Header HTML with metadata |
+| `otherRepresentations.pdfUrl` | PDF download path |
+| `permalink` | Permanent URL |
+| `tabs` | Available parts (K=Kurztext, L=Langtext) |
+| `documentTitle` | Formatted title |
+
+### docPart Values
+
+| Value | Description |
+|-------|-------------|
+| `L` | Langtext (full text) |
+| `K` | Kurztext (summary) |
 
 ## Query Syntax
 

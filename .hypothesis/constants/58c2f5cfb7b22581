@@ -1,0 +1,4 @@
+# file: /usr/lib/python3/dist-packages/h11/_receivebuffer.py
+# hypothesis_version: 6.148.8
+
+[b'\n', b'\n\r?\n', b'\r', b'\r\n', 'ReceiveBuffer']

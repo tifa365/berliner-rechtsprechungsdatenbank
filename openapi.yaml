@@ -89,6 +89,98 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuggestResponse'
+        '500':
+          description: Validation or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - cookieAuth: []
+
+  /document:
+    post:
+      operationId: getDocument
+      summary: Get full document content
+      description: Retrieve the full text content of a legal document by its ID
+      tags:
+        - Documents
+      parameters:
+        - name: juris-portalid
+          in: header
+          required: true
+          schema:
+            type: string
+            default: bsbe
+          description: Portal identifier
+        - name: x-csrf-token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: CSRF token for request validation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentRequest'
+      responses:
+        '200':
+          description: Successful document response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - cookieAuth: []
+
+  /toc:
+    post:
+      operationId: getTableOfContents
+      summary: Get document table of contents
+      description: Retrieve the table of contents for a legal document (mainly for laws with multiple sections)
+      tags:
+        - Documents
+      parameters:
+        - name: juris-portalid
+          in: header
+          required: true
+          schema:
+            type: string
+            default: bsbe
+          description: Portal identifier
+        - name: x-csrf-token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: CSRF token for request validation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TocRequest'
+      responses:
+        '200':
+          description: Successful TOC response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TocResponse'
+        '500':
+          description: Validation or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
         - cookieAuth: []
 
@@ -293,6 +385,11 @@ components:
             - TEXT
             - TITLE
             - NORM
+            - FUNDSTELLE
+            - GERICHT_AUTOR
+            - ECLI
+            - AZ
+            - DATUM
           example: TITLE
           description: Field type
         hits:
@@ -542,6 +639,213 @@ components:
               - BOLD
           description: Markup to apply to this part
 
+    DocumentRequest:
+      type: object
+      required:
+        - docId
+        - format
+        - docPart
+        - clientID
+        - clientVersion
+        - r3ID
+      properties:
+        docId:
+          type: string
+          example: NJRE001628332
+          description: Unique document identifier
+        format:
+          type: string
+          enum:
+            - xsl
+          default: xsl
+          description: Output format
+        keyword:
+          type: string
+          nullable: true
+          description: Keyword to highlight
+        docPart:
+          type: string
+          enum:
+            - L
+            - K
+          example: L
+          description: |
+            Document part:
+            - L: Langtext (full text)
+            - K: Kurztext (summary)
+        sourceParams:
+          $ref: '#/components/schemas/SourceParams'
+        searches:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchField'
+          description: Search context (for highlighting)
+        clientID:
+          type: string
+          example: bsbe
+        clientVersion:
+          type: string
+          example: "bsbe - V08_26_01 - 17.12.2025 16:06"
+        r3ID:
+          type: string
+          format: date-time
+          example: "2025-12-28T10:44:51.022Z"
+
+    SourceParams:
+      type: object
+      properties:
+        position:
+          type: integer
+          example: 0
+          description: Position in result list
+        sort:
+          type: string
+          example: juris
+        source:
+          type: string
+          enum:
+            - TL
+          example: TL
+          description: Source (TL = Trefferliste/result list)
+        category:
+          type: string
+          example: Alles
+
+    DocumentResponse:
+      type: object
+      properties:
+        text:
+          type: string
+          description: Full HTML content of the document
+        head:
+          type: string
+          description: Header HTML with metadata (court, date, case number, etc.)
+        otherRepresentations:
+          $ref: '#/components/schemas/OtherRepresentations'
+        permalink:
+          type: string
+          format: uri
+          example: "https://gesetze.berlin.de/perma?d=NJRE001628332"
+          description: Permanent URL for the document
+        tabs:
+          $ref: '#/components/schemas/DocumentTabs'
+        documentTitle:
+          type: object
+          properties:
+            title:
+              type: string
+              example: "5 W 170/25 | KG Berlin 5. Zivilsenat | 18.12.2025 | Beschluss"
+        headerShortForm:
+          type: object
+          properties:
+            substituteText:
+              type: string
+        partCategory:
+          type: string
+          example: single
+        isObserve:
+          type: boolean
+        navPrevious:
+          type: string
+          description: Link to previous document
+        navNext:
+          type: string
+          description: Link to next document
+
+    OtherRepresentations:
+      type: object
+      properties:
+        pdfState:
+          type: string
+          enum:
+            - normal
+            - unavailable
+          example: normal
+        pdfUrl:
+          type: string
+          description: Relative URL to PDF download
+          example: "recherche3doc/KG_Berlin_5_W_170-25_NJRE001628332.pdf?json=..."
+
+    DocumentTabs:
+      type: object
+      properties:
+        tab:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentTab'
+
+    DocumentTab:
+      type: object
+      properties:
+        docId:
+          type: string
+          example: NJRE001628332
+        part:
+          type: string
+          enum:
+            - K
+            - L
+          example: L
+        name:
+          type: string
+          enum:
+            - Kurztext
+            - Langtext
+          example: Langtext
+        active:
+          type: boolean
+          example: true
+        price:
+          type: number
+          format: float
+          example: 0.0
+        params:
+          type: object
+          properties:
+            fixedPart:
+              type: string
+              example: "true"
+
+    TocRequest:
+      type: object
+      required:
+        - docId
+        - docPart
+        - clientID
+        - clientVersion
+        - r3ID
+      properties:
+        docId:
+          type: string
+          example: NJRE001628332
+        allNodes:
+          type: boolean
+          example: false
+          description: Whether to return all nodes or just top level
+        docPart:
+          type: string
+          enum:
+            - L
+            - K
+          example: L
+        clientID:
+          type: string
+          example: bsbe
+        clientVersion:
+          type: string
+          example: "bsbe - V08_26_01 - 17.12.2025 16:06"
+        r3ID:
+          type: string
+          format: date-time
+          example: "2025-12-28T10:44:51.022Z"
+
+    TocResponse:
+      type: object
+      description: Table of contents (empty object for single documents, structured for laws)
+      additionalProperties: true
+
 tags:
   - name: Search
     description: Search and autocomplete operations for legal documents
+  - name: Documents
+    description: Document retrieval operations
