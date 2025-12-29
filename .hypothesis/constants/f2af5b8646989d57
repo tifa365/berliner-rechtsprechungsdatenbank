@@ -1,4 +1,0 @@
-# file: /usr/lib/python3/dist-packages/hpack/__init__.py
-# hypothesis_version: 6.148.8
-
-['4.0.0', 'Decoder', 'Encoder', 'HPACKDecodingError', 'HPACKError', 'HeaderTuple', 'InvalidTableIndex']

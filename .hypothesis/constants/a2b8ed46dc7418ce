@@ -1,4 +1,0 @@
-# file: /usr/lib/python3/dist-packages/h11/_util.py
-# hypothesis_version: 6.148.8
-
-[400, 'LocalProtocolError', 'ProtocolError', 'RemoteProtocolError', 'Sentinel', '_T_Sentinel', 'ascii', 'bytesify', 'malformed data', 'validate']

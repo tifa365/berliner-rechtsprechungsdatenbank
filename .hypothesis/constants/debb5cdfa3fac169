@@ -1,4 +1,0 @@
-# file: /usr/lib/python3/dist-packages/h2/config.py
-# hypothesis_version: 6.148.8
-
-['%s must be a bool', '_%s', 'client_side']
